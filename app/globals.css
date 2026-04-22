@@ -3,20 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 45% 8%;
-  --foreground: 215 18% 91%;
-  --muted: 220 25% 17%;
-  --muted-foreground: 218 16% 64%;
-  --border: 217 22% 24%;
-  --card: 223 39% 11%;
-  --card-foreground: 215 16% 90%;
-  --primary: 193 89% 56%;
-  --primary-foreground: 222 47% 8%;
-  --accent: 221 29% 18%;
-  --accent-foreground: 214 19% 92%;
-  --success: 148 65% 52%;
-  --warning: 45 93% 57%;
-  --danger: 8 89% 61%;
+  /* Surfaces */
+  --background: 224 47% 5%;
+  --foreground: 210 20% 96%;
+  --muted: 223 30% 13%;
+  --muted-foreground: 218 14% 62%;
+  --border: 220 22% 16%;
+  --card: 223 38% 8%;
+  --card-foreground: 210 18% 95%;
+  --accent: 220 28% 14%;
+  --accent-foreground: 214 20% 94%;
+
+  /* Brand + semantic */
+  --primary: 188 95% 55%;
+  --primary-foreground: 222 47% 7%;
+  --danger: 355 85% 58%;
+  --danger-foreground: 0 0% 100%;
+  --success: 152 65% 50%;
+  --warning: 38 95% 58%;
+  --ring: 188 95% 55%;
+
+  /* Chart series */
+  --chart-1: 188 95% 55%;
+  --chart-2: 355 85% 62%;
+  --chart-3: 152 65% 55%;
+  --chart-4: 218 14% 62%;
+  --chart-5: 38 95% 58%;
+
+  --radius: 0.75rem;
 }
 
 * {
@@ -31,13 +45,48 @@ body {
 
 body {
   background:
-    radial-gradient(circle at 10% 10%, rgba(30, 58, 138, 0.16), transparent 45%),
-    radial-gradient(circle at 80% -10%, rgba(14, 165, 233, 0.1), transparent 50%),
+    radial-gradient(1200px 600px at 12% -10%, hsl(188 95% 30% / 0.14), transparent 60%),
+    radial-gradient(900px 500px at 92% 5%, hsl(355 85% 45% / 0.09), transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, hsl(188 95% 30% / 0.06), transparent 60%),
     hsl(var(--background));
   color: hsl(var(--foreground));
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Subtle grid texture behind hero surfaces */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.35) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / 0.6), transparent 70%);
+}
+
+/* Focus ring helper */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.6);
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }
