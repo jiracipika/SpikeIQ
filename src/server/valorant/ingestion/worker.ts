@@ -3,7 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { computeMatchRating } from "../metrics/match-rating";
 import { generateMatchInsights } from "../insights/generate";
 import { normalizeMatchForUser } from "../transform/normalize-match";
-import { ValorantMatchProvider } from "../provider/types";
+import { MatchlistEntry, ValorantMatchProvider } from "../provider/types";
 import {
   claimJobs,
   completeJob,
@@ -23,6 +23,9 @@ export interface ValorantWorkerOptions {
   workerId: string;
   maxJobs?: number;
 }
+
+const BACKFILL_MATCHLIST_PAGE_SIZE = 20;
+const BACKFILL_MATCHLIST_MAX_PAGES = 15;
 
 export class ValorantIngestionWorker {
   constructor(
@@ -128,12 +131,17 @@ export class ValorantIngestionWorker {
   }
 
   private async handleFetchMatchlist(payload: FetchMatchlistPayload): Promise<void> {
-    const matchlist = await this.provider.getMatchlist(payload.region, payload.puuid);
-    const known = await this.fetchKnownMatchIds(payload.userId, matchlist.history.map((entry) => entry.matchId));
+    const history =
+      payload.mode === "backfill"
+        ? await this.fetchBackfillHistory(payload.region, payload.puuid)
+        : (await this.provider.getMatchlist(payload.region, payload.puuid)).history;
 
-    const unknownMatchIds = matchlist.history
-      .map((entry) => entry.matchId)
-      .filter((matchId) => !known.has(matchId));
+    const known = await this.fetchKnownMatchIds(
+      payload.userId,
+      history.map((entry) => entry.matchId),
+    );
+
+    const unknownMatchIds = history.map((entry) => entry.matchId).filter((matchId) => !known.has(matchId));
 
     for (const matchId of unknownMatchIds) {
       await enqueueJob(this.supabase, {
@@ -151,24 +159,27 @@ export class ValorantIngestionWorker {
 
     const highestStart = Math.max(
       0,
-      ...matchlist.history.map((entry) => Number(entry.gameStartTimeMillis ?? 0)),
+      ...history.map((entry) => Number(entry.gameStartTimeMillis ?? 0)),
     );
 
     await this.updateSyncState(payload.userId, {
       high_watermark_start_ms: highestStart || null,
-      last_match_id_seen: matchlist.history[0]?.matchId ?? null,
+      last_match_id_seen: history[0]?.matchId ?? null,
       last_synced_at: new Date().toISOString(),
       ...(payload.mode === "backfill"
         ? {
-            phase: "idle",
-            backfill_status: "completed",
-            last_backfill_at: new Date().toISOString(),
+            phase: "backfill",
+            backfill_status: "running",
           }
         : {
             phase: "idle",
             last_refresh_at: new Date().toISOString(),
           }),
     });
+
+    if (payload.mode === "backfill") {
+      await this.maybeFinalizeBackfill(payload.userId);
+    }
   }
 
   private async handleFetchMatch(payload: FetchMatchPayload): Promise<void> {
@@ -347,6 +358,8 @@ export class ValorantIngestionWorker {
     if (match?.game_start_at) {
       await this.recomputeDailyAggregate(payload.userId, match.game_start_at);
     }
+
+    await this.maybeFinalizeBackfill(payload.userId);
   }
 
   private async recomputeDailyAggregate(userId: string, matchStartAtIso: string): Promise<void> {
@@ -418,6 +431,79 @@ export class ValorantIngestionWorker {
     }
 
     return new Set((data ?? []).map((entry) => String(entry.match_id)));
+  }
+
+  private async fetchBackfillHistory(region: FetchMatchlistPayload["region"], puuid: string): Promise<MatchlistEntry[]> {
+    const seen = new Set<string>();
+    const history: MatchlistEntry[] = [];
+
+    for (let page = 0; page < BACKFILL_MATCHLIST_MAX_PAGES; page += 1) {
+      const startIndex = page * BACKFILL_MATCHLIST_PAGE_SIZE;
+      const endIndex = startIndex + BACKFILL_MATCHLIST_PAGE_SIZE - 1;
+      const response = await this.provider.getMatchlist(region, puuid, {
+        startIndex,
+        endIndex,
+      });
+
+      const batch = response.history ?? [];
+      if (batch.length === 0) {
+        break;
+      }
+
+      let addedCount = 0;
+      for (const entry of batch) {
+        if (!seen.has(entry.matchId)) {
+          seen.add(entry.matchId);
+          history.push(entry);
+          addedCount += 1;
+        }
+      }
+
+      if (batch.length < BACKFILL_MATCHLIST_PAGE_SIZE || addedCount === 0) {
+        break;
+      }
+    }
+
+    return history;
+  }
+
+  private async maybeFinalizeBackfill(userId: string): Promise<void> {
+    const { data: syncState, error: syncStateError } = await this.supabase
+      .from("valorant_sync_state")
+      .select("phase, backfill_status")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (syncStateError) {
+      throw new Error(`Failed loading sync state for backfill completion check: ${syncStateError.message}`);
+    }
+
+    if (!syncState || syncState.phase !== "backfill") {
+      return;
+    }
+
+    const { count, error: pendingError } = await this.supabase
+      .from("valorant_ingestion_jobs")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["queued", "running"])
+      .in("job_type", ["fetch_match", "transform_match", "recompute_metrics"])
+      .contains("payload", { userId });
+
+    if (pendingError) {
+      throw new Error(`Failed checking pending backfill jobs: ${pendingError.message}`);
+    }
+
+    if ((count ?? 0) > 0) {
+      return;
+    }
+
+    await this.updateSyncState(userId, {
+      phase: "idle",
+      backfill_status: "completed",
+      last_backfill_at: new Date().toISOString(),
+      last_synced_at: new Date().toISOString(),
+      last_error: null,
+    });
   }
 
   private async updateSyncState(

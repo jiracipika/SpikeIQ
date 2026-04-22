@@ -1,5 +1,6 @@
 import {
   AccountIdentity,
+  MatchlistQueryOptions,
   MatchlistResponse,
   ProviderCache,
   RawMatchPayload,
@@ -61,8 +62,30 @@ export class LiveRiotProvider implements ValorantMatchProvider {
     });
   }
 
-  async getMatchlist(region: ValorantRegion, puuid: string): Promise<MatchlistResponse> {
-    const url = `${MATCH_BASE_BY_REGION[region]}/val/match/v1/matchlists/by-puuid/${encodeURIComponent(puuid)}`;
+  async getMatchlist(
+    region: ValorantRegion,
+    puuid: string,
+    options: MatchlistQueryOptions = {},
+  ): Promise<MatchlistResponse> {
+    const query = new URLSearchParams();
+    if (Number.isFinite(options.startIndex)) {
+      query.set("startIndex", String(options.startIndex));
+    }
+    if (Number.isFinite(options.endIndex)) {
+      query.set("endIndex", String(options.endIndex));
+    }
+    if (Number.isFinite(options.startTimeMillis)) {
+      query.set("startTime", String(options.startTimeMillis));
+    }
+    if (Number.isFinite(options.endTimeMillis)) {
+      query.set("endTime", String(options.endTimeMillis));
+    }
+    if (options.queue) {
+      query.set("queue", options.queue);
+    }
+
+    const querySuffix = query.size > 0 ? `?${query.toString()}` : "";
+    const url = `${MATCH_BASE_BY_REGION[region]}/val/match/v1/matchlists/by-puuid/${encodeURIComponent(puuid)}${querySuffix}`;
 
     return this.request<MatchlistResponse>(url, {
       cacheKey: `matchlist:${region}:${puuid}`,

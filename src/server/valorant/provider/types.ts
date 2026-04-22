@@ -17,6 +17,14 @@ export interface MatchlistResponse {
   history: MatchlistEntry[];
 }
 
+export interface MatchlistQueryOptions {
+  startIndex?: number;
+  endIndex?: number;
+  startTimeMillis?: number;
+  endTimeMillis?: number;
+  queue?: string;
+}
+
 export interface RawMatchPlayerStats {
   score?: number;
   roundsPlayed?: number;
@@ -94,6 +102,6 @@ export interface ProviderCache {
 
 export interface ValorantMatchProvider {
   getAccountMe(accessToken: string, accountRoute?: "americas" | "europe" | "asia"): Promise<AccountIdentity>;
-  getMatchlist(region: ValorantRegion, puuid: string): Promise<MatchlistResponse>;
+  getMatchlist(region: ValorantRegion, puuid: string, options?: MatchlistQueryOptions): Promise<MatchlistResponse>;
   getMatch(region: ValorantRegion, matchId: string): Promise<RawMatchPayload>;
 }

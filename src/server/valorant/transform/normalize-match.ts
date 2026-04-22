@@ -1,6 +1,8 @@
 import { computeMatchRating } from "../metrics/match-rating";
 import { computeRoundRating } from "../metrics/round-rating";
-import { RawMatchPayload, RawRoundResult } from "../provider/types";
+import { RawMatchPayload, RawMatchPlayer, RawRoundResult } from "../provider/types";
+
+type RoundSide = "attack" | "defense" | "unknown";
 
 export interface NormalizedMatchRow {
   owner_user_id: string;
@@ -38,7 +40,7 @@ export interface NormalizedRoundRow {
   owner_user_id: string;
   match_id: string;
   round_num: number;
-  side: "attack" | "defense" | "unknown";
+  side: RoundSide;
   round_won: boolean | null;
   survived_round: boolean;
   kills: number;
@@ -84,6 +86,11 @@ export function normalizeMatchForUser(params: {
   const teamId = player.teamId ?? null;
   const teams = raw.teams ?? [];
   const ownTeam = teams.find((team) => team.teamId === teamId);
+  const inferRoundSide = createRoundSideResolver({
+    teamId,
+    rounds: raw.roundResults ?? [],
+    players: raw.players ?? [],
+  });
 
   const rounds = (raw.roundResults ?? []).map((roundResult) =>
     normalizeRound({
@@ -92,6 +99,7 @@ export function normalizeMatchForUser(params: {
       teamId,
       puuid,
       roundResult,
+      side: inferRoundSide(roundResult),
     }),
   );
 
@@ -166,8 +174,9 @@ function normalizeRound(params: {
   teamId: string | null;
   puuid: string;
   roundResult: RawRoundResult;
+  side: RoundSide;
 }): NormalizedRoundRow {
-  const { ownerUserId, matchId, teamId, puuid, roundResult } = params;
+  const { ownerUserId, matchId, teamId, puuid, roundResult, side } = params;
   const playerStats = roundResult.playerStats?.find((entry) => entry.puuid === puuid);
 
   const events = extractKillEvents(roundResult as unknown as Record<string, unknown>);
@@ -207,7 +216,7 @@ function normalizeRound(params: {
     owner_user_id: ownerUserId,
     match_id: matchId,
     round_num: roundResult.roundNum,
-    side: inferSide(roundResult.roundNum),
+    side,
     round_won: roundWon,
     survived_round: survivedRound,
     kills,
@@ -227,14 +236,93 @@ function normalizeRound(params: {
   };
 }
 
-function inferSide(roundNum: number): "attack" | "defense" | "unknown" {
-  if (roundNum >= 1 && roundNum <= 12) {
-    return "attack";
+function createRoundSideResolver(params: {
+  teamId: string | null;
+  rounds: RawRoundResult[];
+  players: RawMatchPlayer[];
+}): (round: RawRoundResult) => RoundSide {
+  const { teamId, rounds, players } = params;
+  const teamByPuuid = new Map<string, string>();
+  for (const player of players) {
+    if (player.puuid && player.teamId) {
+      teamByPuuid.set(player.puuid, player.teamId);
+    }
   }
-  if (roundNum > 12) {
-    return "defense";
+
+  const firstHalfSide = inferFirstHalfSide(teamId, rounds, teamByPuuid);
+
+  return (round: RawRoundResult): RoundSide => {
+    const objectiveSide = inferSideFromObjective(round, teamId, teamByPuuid);
+    if (objectiveSide !== "unknown") {
+      return objectiveSide;
+    }
+
+    if (!firstHalfSide) {
+      return "unknown";
+    }
+
+    if (round.roundNum >= 1 && round.roundNum <= 12) {
+      return firstHalfSide;
+    }
+    if (round.roundNum >= 13 && round.roundNum <= 24) {
+      return flipSide(firstHalfSide);
+    }
+
+    return "unknown";
+  };
+}
+
+function inferFirstHalfSide(
+  teamId: string | null,
+  rounds: RawRoundResult[],
+  teamByPuuid: Map<string, string>,
+): Exclude<RoundSide, "unknown"> | null {
+  if (!teamId) {
+    return null;
   }
+
+  const firstHalf = [...rounds]
+    .filter((round) => round.roundNum >= 1 && round.roundNum <= 12)
+    .sort((a, b) => a.roundNum - b.roundNum);
+
+  for (const round of firstHalf) {
+    const side = inferSideFromObjective(round, teamId, teamByPuuid);
+    if (side !== "unknown") {
+      return side;
+    }
+  }
+
+  return null;
+}
+
+function inferSideFromObjective(
+  round: RawRoundResult,
+  teamId: string | null,
+  teamByPuuid: Map<string, string>,
+): RoundSide {
+  if (!teamId) {
+    return "unknown";
+  }
+
+  if (round.bombPlanter) {
+    const planterTeam = teamByPuuid.get(round.bombPlanter);
+    if (planterTeam) {
+      return planterTeam === teamId ? "attack" : "defense";
+    }
+  }
+
+  if (round.bombDefuser) {
+    const defuserTeam = teamByPuuid.get(round.bombDefuser);
+    if (defuserTeam) {
+      return defuserTeam === teamId ? "defense" : "attack";
+    }
+  }
+
   return "unknown";
+}
+
+function flipSide(side: Exclude<RoundSide, "unknown">): Exclude<RoundSide, "unknown"> {
+  return side === "attack" ? "defense" : "attack";
 }
 
 function asNumber(value: number | undefined): number {
@@ -265,18 +353,20 @@ function extractKillEvents(roundResult: Record<string, unknown>): KillEvent[] {
     return [];
   }
 
-  return possible
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
-      const data = entry as Record<string, unknown>;
-      return {
-        killer: typeof data.killer === "string" ? data.killer : undefined,
-        victim: typeof data.victim === "string" ? data.victim : undefined,
-        isTradeKill: Boolean(data.isTradeKill),
-        victimWasTraded: Boolean(data.victimWasTraded),
-      };
-    })
-    .filter((entry): entry is KillEvent => Boolean(entry));
+  const events: KillEvent[] = [];
+  for (const entry of possible) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+
+    const data = entry as Record<string, unknown>;
+    events.push({
+      killer: typeof data.killer === "string" ? data.killer : undefined,
+      victim: typeof data.victim === "string" ? data.victim : undefined,
+      isTradeKill: Boolean(data.isTradeKill),
+      victimWasTraded: Boolean(data.victimWasTraded),
+    });
+  }
+
+  return events;
 }

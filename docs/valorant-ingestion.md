@@ -29,8 +29,10 @@ Refresh cadence flow:
 ## Backfill Strategy
 - Triggered from `onRiotLinked`.
 - Seeds `sync_backfill_seed`, then `fetch_matchlist(mode=backfill)`.
+- Backfill matchlist reads are paged (`startIndex`/`endIndex`) to pull deeper history, not only the first page.
 - Worker compares remote IDs against existing local match IDs.
 - Only unseen matches are fetched and transformed.
+- Backfill is marked complete only when downstream `fetch_match` + `transform_match` + `recompute_metrics` jobs are fully drained.
 - Sync cursor state (`high_watermark_start_ms`, `last_match_id_seen`, timestamps) is persisted in `valorant_sync_state`.
 
 ## Refresh Strategy
@@ -76,7 +78,7 @@ Match score:
 ## Risks and Assumptions
 - Assumes approved Riot access and compliant user consent copy.
 - Assumes service-role backend path for queue/raw/derived writes.
-- Side inference in rounds is currently heuristic and should be refined with richer fields when available.
+- Side inference is objective-aware (planter/defuser team ownership + half swap fallback), but overtime/no-objective rounds can still resolve to `unknown`.
 - Insight generation is rule-based v1 and should be tuned with real match distributions.
 
 ## Implementation Order
