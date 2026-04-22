@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
 
 export default async function SettingsPage() {
-  const { user, settings } = await valorantService.getSettingsPageData();
+  const service = await getValorantService();
+  const { user, settings } = await service.getSettingsPageData();
 
   return (
     <div className="space-y-6">
@@ -141,9 +142,11 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
-          <Button variant="outline">
-            <LogOut className="h-4 w-4" /> Sign out everywhere
-          </Button>
+          <form action="/auth/logout" method="post">
+            <Button type="submit" variant="outline">
+              <LogOut className="h-4 w-4" /> Sign out
+            </Button>
+          </form>
           <Button variant="outline" className="border-danger/40 text-danger hover:bg-danger/10">
             <Trash2 className="h-4 w-4" /> Delete account
           </Button>

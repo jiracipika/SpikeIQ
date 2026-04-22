@@ -10,9 +10,10 @@ import { WinrateTrendChart } from "@/components/dashboard/winrate-trend-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPercent } from "@/lib/utils";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
 
 export default async function DashboardOverviewPage() {
+  const service = await getValorantService();
   const {
     user,
     overview,
@@ -21,10 +22,31 @@ export default async function DashboardOverviewPage() {
     agentPerformance,
     mapPerformance,
     insights,
-  } = await valorantService.getDashboardPageData();
+  } = await service.getDashboardPageData();
+
+  const hasData = overview.totalMatches > 0;
 
   return (
     <div className="space-y-6">
+      {!hasData ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-base">Welcome to SpikeIQ</CardTitle>
+            <CardDescription>
+              Connect your Riot account to import match history and unlock personalized insights.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/connect-riot">
+              <Button>
+                Connect Riot account
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <PlayerSummaryCard user={user} overview={overview} recentForm={recentMatches} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

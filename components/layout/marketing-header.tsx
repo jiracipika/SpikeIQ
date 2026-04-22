@@ -32,7 +32,7 @@ export function MarketingHeader() {
               Sign in
             </Button>
           </Link>
-          <Link href="/connect-riot">
+          <Link href="/auth/sign-up">
             <Button size="sm">Get started</Button>
           </Link>
         </div>

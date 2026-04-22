@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import type { ValorantDataRepository } from "@/lib/services/contracts";
-import { MockValorantRepository } from "@/lib/services/mock-valorant-repository";
+import { SupabaseValorantRepository } from "@/lib/services/supabase-valorant-repository";
 
 export class ValorantService {
   constructor(private readonly repository: ValorantDataRepository) {}
@@ -11,14 +13,15 @@ export class ValorantService {
   async getDashboardPageData() {
     const user = await this.requireUser();
 
-    const [overview, recentMatches, trend, agentPerformance, mapPerformance, insights] = await Promise.all([
-      this.repository.getDashboardOverview(user.id),
-      this.repository.getRecentMatches(user.id, 5),
-      this.repository.getWinRateTrend(user.id),
-      this.repository.getAgentPerformance(user.id),
-      this.repository.getMapPerformance(user.id),
-      this.repository.getCoachingInsights(user.id),
-    ]);
+    const [overview, recentMatches, trend, agentPerformance, mapPerformance, insights] =
+      await Promise.all([
+        this.repository.getDashboardOverview(user.id),
+        this.repository.getRecentMatches(user.id, 5),
+        this.repository.getWinRateTrend(user.id),
+        this.repository.getAgentPerformance(user.id),
+        this.repository.getMapPerformance(user.id),
+        this.repository.getCoachingInsights(user.id),
+      ]);
 
     return { user, overview, recentMatches, trend, agentPerformance, mapPerformance, insights };
   }
@@ -43,16 +46,18 @@ export class ValorantService {
 
   private async requireUser() {
     const user = await this.repository.getCurrentUser();
-
-    // TODO(auth): replace with real auth session + redirect when Supabase Auth is integrated.
     if (!user) {
-      throw new Error("Authenticated user not found");
+      redirect("/sign-in");
     }
-
     return user;
   }
 }
 
-// TODO(data): swap MockValorantRepository with Supabase/Riot-backed repository
-// via dependency injection once backend integration is available.
-export const valorantService = new ValorantService(new MockValorantRepository());
+/**
+ * Build a ValorantService bound to the current request's Supabase session.
+ * Must be called from a Server Component, Route Handler, or Server Action.
+ */
+export async function getValorantService(): Promise<ValorantService> {
+  const supabase = await createClient();
+  return new ValorantService(new SupabaseValorantRepository(supabase));
+}

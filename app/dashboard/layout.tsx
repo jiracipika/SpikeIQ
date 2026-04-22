@@ -1,11 +1,13 @@
+import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await valorantService.getCurrentUser();
+  const service = await getValorantService();
+  const user = await service.getCurrentUser();
 
   if (!user) {
-    return <div className="p-6 text-sm text-muted-foreground">No user session found.</div>;
+    redirect("/sign-in?redirectTo=/dashboard");
   }
 
   return <DashboardShell user={user}>{children}</DashboardShell>;

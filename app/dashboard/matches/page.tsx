@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchCard } from "@/components/dashboard/match-card";
 import { RecentMatchesTable } from "@/components/dashboard/recent-matches-table";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
 import { formatPercent } from "@/lib/utils";
 
 export default async function MatchHistoryPage() {
-  const { matches } = await valorantService.getMatchHistoryPageData();
+  const service = await getValorantService();
+  const { matches } = await service.getMatchHistoryPageData();
 
   const wins = matches.filter((m) => m.result === "win").length;
   const losses = matches.length - wins;
