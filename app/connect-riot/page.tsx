@@ -22,6 +22,7 @@ import { BrandMark } from "@/components/common/brand-mark";
 import { SUPPORTED_REGIONS, isMockMode, type RiotRegion } from "@/lib/riot/config";
 import { getConnectedRiotAccount } from "@/lib/riot/store";
 import { RiotConnectForm } from "@/components/riot/riot-connect-form";
+import { SummonerLookupForm } from "@/components/riot/summoner-lookup-form";
 
 type Status = "success" | "error" | "disconnected" | null;
 
@@ -118,6 +119,11 @@ export default async function ConnectRiotPage({ searchParams }: ConnectRiotPageP
                     <li>· We import your last 20 competitive matches to build your baseline.</li>
                     <li>· You can disconnect anytime from Settings in two clicks.</li>
                   </ul>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">Or try without OAuth:</p>
+                  <SummonerLookupForm />
                 </div>
               </CardContent>
             </Card>
