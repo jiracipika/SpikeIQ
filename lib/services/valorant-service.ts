@@ -13,7 +13,7 @@ export class ValorantService {
   async getDashboardPageData() {
     const user = await this.requireUser();
 
-    const [overview, recentMatches, trend, agentPerformance, mapPerformance, insights] =
+    const [overview, recentMatches, trend, agentPerformance, mapPerformance, insights, snapshot] =
       await Promise.all([
         this.repository.getDashboardOverview(user.id),
         this.repository.getRecentMatches(user.id, 5),
@@ -21,9 +21,24 @@ export class ValorantService {
         this.repository.getAgentPerformance(user.id),
         this.repository.getMapPerformance(user.id),
         this.repository.getCoachingInsights(user.id),
+        this.repository.getAnalyticsSnapshot(user.id),
       ]);
 
-    return { user, overview, recentMatches, trend, agentPerformance, mapPerformance, insights };
+    return {
+      user,
+      overview,
+      recentMatches,
+      trend,
+      agentPerformance,
+      mapPerformance,
+      insights,
+      snapshot,
+    };
+  }
+
+  async getAnalyticsSnapshot() {
+    const user = await this.requireUser();
+    return this.repository.getAnalyticsSnapshot(user.id);
   }
 
   async getMatchHistoryPageData() {

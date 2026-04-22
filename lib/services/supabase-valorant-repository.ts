@@ -17,6 +17,9 @@ import type {
   ValorantMatch,
   WinRateTrendPoint,
 } from "@/types/domain";
+import type { AnalyticsSnapshot } from "@/lib/analytics/types";
+import { runAnalytics } from "@/lib/analytics";
+import { loadAnalyticsInputs } from "@/lib/analytics/supabase-loader";
 
 type ProfileRow = {
   id: string;
@@ -463,6 +466,11 @@ export class SupabaseValorantRepository implements ValorantDataRepository {
       description: row.description,
       action: row.action ?? "",
     }));
+  }
+
+  async getAnalyticsSnapshot(userId: string): Promise<AnalyticsSnapshot> {
+    const { matches, rounds } = await loadAnalyticsInputs(this.supabase, userId);
+    return runAnalytics(matches, rounds);
   }
 
   async getUserSettings(userId: string): Promise<UserSettings> {
