@@ -12,6 +12,7 @@ import {
 import { buildAuthorizationUrl, exchangeCodeForToken, generateState, safeEquals } from "@/lib/riot/oauth";
 import { fetchRiotIdentity } from "@/lib/riot/client";
 import { saveRiotAccountLink } from "@/lib/riot/store";
+import { logRiotAuthFailure } from "@/lib/riot/observability";
 
 type CallbackErrorCode =
   | "unauthenticated"
@@ -99,11 +100,23 @@ export async function completeRiotOAuth(request: NextRequest): Promise<NextRespo
   }
 
   if (!OAUTH_STATE_PATTERN.test(state)) {
+    logRiotAuthFailure({
+      request,
+      code: "state_mismatch",
+      userId: user.id,
+      details: { reason: "invalid_state_format" },
+    });
     return oauthErrorRedirect(request, "state_mismatch");
   }
 
   const cookieState = request.cookies.get(RIOT_STATE_COOKIE)?.value;
   if (!cookieState || !safeEquals(cookieState, state)) {
+    logRiotAuthFailure({
+      request,
+      code: "state_mismatch",
+      userId: user.id,
+      details: { reason: "cookie_mismatch_or_missing" },
+    });
     return oauthErrorRedirect(request, "state_mismatch");
   }
 
@@ -114,7 +127,12 @@ export async function completeRiotOAuth(request: NextRequest): Promise<NextRespo
   try {
     tokens = await exchangeCodeForToken(code);
   } catch (error) {
-    console.error("[spikeiq] riot token exchange failed", error);
+    logRiotAuthFailure({
+      request,
+      code: "token_exchange_failed",
+      userId: user.id,
+      details: { error: error instanceof Error ? error.message : "unknown" },
+    });
     return oauthErrorRedirect(request, "token_exchange_failed");
   }
 
@@ -122,7 +140,12 @@ export async function completeRiotOAuth(request: NextRequest): Promise<NextRespo
   try {
     identity = await fetchRiotIdentity({ tokens, region });
   } catch (error) {
-    console.error("[spikeiq] riot identity fetch failed", error);
+    logRiotAuthFailure({
+      request,
+      code: "identity_failed",
+      userId: user.id,
+      details: { error: error instanceof Error ? error.message : "unknown" },
+    });
     return oauthErrorRedirect(request, "identity_failed");
   }
 

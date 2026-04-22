@@ -9,6 +9,7 @@
 - Routing model:
   - Start: `GET /api/riot/start?region=NA|EU|AP`
   - Callback: `GET /api/riot/callback?code=...&state=...`
+  - Manual sync: `POST /api/riot/sync`
   - Legacy compatibility retained:
     - `/api/riot/connect` -> alias of `/api/riot/start`
     - `/auth/riot/callback` -> alias of `/api/riot/callback`
@@ -18,6 +19,8 @@
   - `lib/riot/client.ts`: identity fetch (`/riot/account/v1/accounts/me`).
   - `lib/riot/store.ts`: persisted Riot link + token metadata in Supabase.
   - `lib/riot/handlers.ts`: route-level orchestration for start/callback.
+  - `lib/riot/sync.ts`: imports latest matches and recomputes analytics.
+  - `lib/riot/observability.ts`: structured auth/sync failure logging.
 - Security boundary:
   - `RIOT_CLIENT_SECRET`, `RIOT_API_KEY`, token encryption key are server-only.
   - UI receives only safe linked-account status, never OAuth secrets/tokens.
@@ -71,6 +74,7 @@
 - `RIOT_TOKEN_ENCRYPTION_KEY`
 - `RIOT_ALLOW_PLAINTEXT_TOKENS_IN_DEV`
 - `RIOT_API_KEY`
+- `RIOT_SYNC_MATCH_LIMIT`
 
 ## 5) Mock Mode Design
 

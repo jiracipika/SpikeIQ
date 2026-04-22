@@ -18,7 +18,32 @@ import { getValorantService } from "@/lib/services";
 import { getConnectedRiotAccount } from "@/lib/riot/store";
 import { isMockMode } from "@/lib/riot/config";
 
-export default async function SettingsPage() {
+type SyncStatus = "success" | "error" | null;
+
+interface SettingsPageProps {
+  searchParams: Promise<{
+    sync?: string;
+    code?: string;
+    mode?: string;
+    fetched?: string;
+    inserted?: string;
+    updated?: string;
+    analyzed?: string;
+  }>;
+}
+
+const SYNC_ERROR_MESSAGES: Record<string, string> = {
+  unauthenticated: "Your session expired before sync started. Please sign in and try again.",
+  riot_not_connected: "No verified Riot account is linked yet. Connect Riot first.",
+  missing_riot_api_key: "Server Riot API key is missing. Add RIOT_API_KEY and retry.",
+  sync_failed: "Sync failed unexpectedly. Please retry in a minute.",
+};
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
+  const params = await searchParams;
+  const syncStatus = (params.sync as SyncStatus) ?? null;
+  const syncCode = params.code;
+
   const service = await getValorantService();
   const [{ user, settings }, riotAccount] = await Promise.all([
     service.getSettingsPageData(),
@@ -34,6 +59,28 @@ export default async function SettingsPage() {
           Manage your account, analytics preferences, and connected services.
         </p>
       </div>
+
+      {syncStatus === "success" ? (
+        <Card className="border-success/40 bg-success/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
+            <p className="text-foreground">
+              Sync complete: fetched {params.fetched ?? "0"}, inserted {params.inserted ?? "0"},
+              updated {params.updated ?? "0"}, analyzed {params.analyzed ?? "0"} matches.
+            </p>
+            <Badge variant={params.mode === "mock" ? "warning" : "success"}>
+              {params.mode === "mock" ? "Mock mode" : "Live mode"}
+            </Badge>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {syncStatus === "error" ? (
+        <Card className="border-danger/40 bg-danger/5">
+          <CardContent className="py-4 text-sm text-foreground">
+            {SYNC_ERROR_MESSAGES[syncCode ?? "sync_failed"] ?? SYNC_ERROR_MESSAGES.sync_failed}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -100,9 +147,11 @@ export default async function SettingsPage() {
                   <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden /> Linked
                 </Badge>
                 {mock ? <Badge variant="warning">Demo</Badge> : null}
-                <Button variant="outline" size="sm" disabled>
-                  <RefreshCcw className="h-4 w-4" /> Sync now
-                </Button>
+                <form action="/api/riot/sync" method="post">
+                  <Button variant="outline" size="sm" type="submit">
+                    <RefreshCcw className="h-4 w-4" /> Sync now
+                  </Button>
+                </form>
                 <form action="/api/riot/disconnect" method="post">
                   <Button
                     type="submit"
