@@ -65,11 +65,21 @@ export function getRiotConfig(): RiotConfig {
     userinfoUrl: "https://auth.riotgames.com/userinfo",
     accountApiBase: (region) => `https://${REGION_TO_ROUTING[region]}.api.riotgames.com`,
     redirectUri:
-      process.env.RIOT_REDIRECT_URI ?? `${envOrigin().replace(/\/$/, "")}/auth/riot/callback`,
+      process.env.RIOT_REDIRECT_URI ?? `${envOrigin().replace(/\/$/, "")}/api/riot/callback`,
     mock,
   };
 }
 
 export function isMockMode(): boolean {
   return getRiotConfig().mock;
+}
+
+/**
+ * In local/dev environments we allow plaintext token storage only when this
+ * flag is not explicitly set to "false". Production must always use
+ * `RIOT_TOKEN_ENCRYPTION_KEY`.
+ */
+export function allowPlaintextTokenStorageInDev(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.RIOT_ALLOW_PLAINTEXT_TOKENS_IN_DEV !== "false";
 }

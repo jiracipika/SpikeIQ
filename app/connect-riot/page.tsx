@@ -70,7 +70,7 @@ export default async function ConnectRiotPage({ searchParams }: ConnectRiotPageP
       <main className="relative mx-auto grid w-full max-w-5xl gap-8 px-4 py-10 md:grid-cols-[1.1fr_1fr] md:px-6">
         <div className="space-y-4">
           {status === "success" && account ? (
-            <ConnectedCard account={account} />
+            <ConnectedCard account={account} mock={mock} />
           ) : status === "error" ? (
             <ErrorCard reason={errorCode ? ERROR_MESSAGES[errorCode] ?? null : null} />
           ) : null}
@@ -85,7 +85,7 @@ export default async function ConnectRiotPage({ searchParams }: ConnectRiotPageP
           ) : null}
 
           {account && status !== "success" ? (
-            <ConnectedCard account={account} variant="existing" />
+            <ConnectedCard account={account} variant="existing" mock={mock} />
           ) : null}
 
           {!account ? (
@@ -194,9 +194,11 @@ export default async function ConnectRiotPage({ searchParams }: ConnectRiotPageP
 function ConnectedCard({
   account,
   variant = "just-linked",
+  mock = false,
 }: {
   account: { gameName: string; tagLine: string; region: string; isVerified: boolean };
   variant?: "just-linked" | "existing";
+  mock?: boolean;
 }) {
   return (
     <Card className="border-success/40 bg-success/5">
@@ -232,6 +234,7 @@ function ConnectedCard({
           <Badge variant="success">
             <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden /> Linked
           </Badge>
+          {mock ? <Badge variant="warning">Demo mode</Badge> : null}
           <Link href="/dashboard">
             <Button size="sm">
               Go to dashboard
