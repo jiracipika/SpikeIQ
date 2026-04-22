@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SUPPORTED_REGIONS, type RiotRegion } from "@/lib/riot/config";
+import { SUPPORTED_REGIONS, type RiotRegion } from "@/lib/riot/regions";
 
 interface RiotConnectFormProps {
   defaultRegion: RiotRegion;
