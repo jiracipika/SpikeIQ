@@ -122,7 +122,7 @@ export default async function ConnectRiotPage({ searchParams }: ConnectRiotPageP
                 </div>
 
                 <div className="border-t border-border pt-5">
-                  <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">Or try without OAuth:</p>
+                  <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">Or look up your VALORANT stats:</p>
                   <SummonerLookupForm />
                 </div>
               </CardContent>

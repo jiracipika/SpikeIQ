@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { AlertCircle, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -12,88 +12,106 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SUPPORTED_REGIONS, type RiotRegion } from "@/lib/riot/regions";
-import { lookupSummoner } from "@/app/actions/riot";
+import { lookupPlayer } from "@/app/actions/riot";
 
 export function SummonerLookupForm() {
-  const [summonerName, setSummonerName] = useState("");
-  const [region, setRegion] = useState<RiotRegion>("na1");
+  const [gameName, setGameName] = useState("");
+  const [tagLine, setTagLine] = useState("");
+  const [region, setRegion] = useState<RiotRegion>("NA");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    name: string;
-    level: number;
-    puuid: string;
-  } | null>(null);
+  const [result, setResult] = useState<any | null>(null);
+  const [error, setError] = useState("");
 
-  async function handleLookup(e: React.FormEvent) {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setResult(null);
-    setLoading(true);
-
-    const res = await lookupSummoner(summonerName, region);
-    setLoading(false);
-
-    if (res.error) {
-      setError(res.error);
-    } else if (res.summoner) {
-      setResult(res.summoner);
+    if (!gameName.trim()) {
+      setError("Enter your player name");
+      return;
     }
-  }
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const data = await lookupPlayer(gameName, tagLine, region);
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setResult(data);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to look up player");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Try with your summoner name</CardTitle>
-        <CardDescription>
-          Enter your summoner name to see your real stats (API key powered).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleLookup} className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Summoner name..."
-              value={summonerName}
-              onChange={(e) => setSummonerName(e.target.value)}
-              disabled={loading}
-              autoComplete="off"
-              className="flex-1"
-            />
-            <Select value={region} onValueChange={(v) => setRegion(v as RiotRegion)} disabled={loading}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_REGIONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={loading || !summonerName.trim()}>
-              <Search className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
+    <form onSubmit={handleSearch} className="space-y-3">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Player name (e.g., Tenz)"
+          value={gameName}
+          onChange={(e) => setGameName(e.target.value)}
+          disabled={loading}
+          className="flex-1"
+        />
+        <Input
+          placeholder="Tag (e.g., 123)"
+          value={tagLine}
+          onChange={(e) => setTagLine(e.target.value)}
+          disabled={loading}
+          className="w-20"
+          maxLength={5}
+        />
+        <Select value={region} onValueChange={(v) => setRegion(v as RiotRegion)}>
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_REGIONS.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="submit" disabled={loading} size="sm">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          Search
+        </Button>
+      </div>
 
-          {error && <p className="text-xs text-danger">{error}</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          {result && (
-            <div className="rounded-md border border-success/30 bg-success/5 p-3 text-sm">
-              <p className="font-medium text-foreground">
-                {result.name}
-                <span className="ml-1 text-xs text-muted-foreground">Level {result.level}</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">PUUID: {result.puuid}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Found! Next step: we'd sync your match history and build your analytics.
-              </p>
+      {result && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">PLAYER FOUND</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {result.gameName}
+                <span className="ml-1 font-mono text-muted-foreground">#{result.tagLine}</span>
+              </span>
+              <Badge variant="success">Account Level {result.summonerLevel}</Badge>
             </div>
-          )}
-        </form>
-      </CardContent>
-    </Card>
+            <p className="text-xs text-muted-foreground">
+              PUUID: <span className="font-mono">{result.puuid.slice(0, 12)}...</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Region: <span className="font-medium">{region}</span>
+            </p>
+          </div>
+        </div>
+      )}
+    </form>
   );
 }

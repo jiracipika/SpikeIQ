@@ -1,22 +1,21 @@
 "use server";
 
-import { fetchRiotSummonerByName } from "@/lib/riot/api";
+import { fetchPlayerByName } from "@/lib/riot/api";
 
-export async function lookupSummoner(summonerName: string, region: string) {
-  if (!summonerName.trim()) {
-    return { error: "Enter a summoner name" };
+export async function lookupPlayer(gameName: string, tagLine: string, region: string) {
+  if (!gameName.trim()) {
+    return { error: "Enter your player name" };
   }
 
-  const summoner = await fetchRiotSummonerByName(summonerName, region);
-  if (!summoner) {
-    return { error: `Summoner "${summonerName}" not found on ${region}. Check spelling and region.` };
+  const player = await fetchPlayerByName(gameName, tagLine, region);
+  if (!player) {
+    return { error: `Player "${gameName}#${tagLine}" not found on ${region}. Check spelling and region.` };
   }
 
   return {
-    summoner: {
-      name: summoner.name,
-      level: summoner.summonerLevel,
-      puuid: summoner.puuid,
-    },
+    gameName: player.gameName,
+    tagLine: player.tagLine,
+    summonerLevel: player.summonerLevel,
+    puuid: player.puuid,
   };
 }
