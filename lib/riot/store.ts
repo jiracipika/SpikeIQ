@@ -2,16 +2,15 @@
  * Persistence for connected Riot accounts.
  *
  * Writes go through the per-request Supabase server client so RLS enforces
- * that each row only ever belongs to the authenticated user. Tokens are
- * currently stored as-is in the `*_encrypted` columns; see the TODO below
- * for the production plan.
+ * that each row only ever belongs to the authenticated user.
  */
 
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { RiotRegion } from "./config";
+import { allowPlaintextTokenStorageInDev, isMockMode, type RiotRegion } from "./config";
 import type { RiotIdentity } from "./client";
 import type { RiotTokenSet } from "./oauth";
+import { encryptTokenForStorage } from "./crypto";
 
 export interface ConnectedRiotAccount {
   id: string;
@@ -73,15 +72,7 @@ export async function getConnectedRiotAccount(): Promise<ConnectedRiotAccount | 
   return data ? toDomain(data) : null;
 }
 
-/**
- * Upsert the authenticated user's Riot link and profile regional pointer.
- * Returns the stored row.
- *
- * TODO(production): encrypt `accessToken` / `refreshToken` with a server-only
- * AES-GCM key (e.g. `RIOT_TOKEN_ENCRYPTION_KEY`) before writing, and decrypt
- * on read. The columns are already named `*_encrypted` to make this swap a
- * one-file change.
- */
+/** Upsert the authenticated user's Riot link and profile regional pointer. */
 export async function saveRiotAccountLink(params: {
   identity: RiotIdentity;
   tokens: RiotTokenSet;
@@ -95,6 +86,7 @@ export async function saveRiotAccountLink(params: {
     throw new Error("Not authenticated");
   }
 
+  const allowPlaintextFallback = isMockMode() || allowPlaintextTokenStorageInDev();
   const payload = {
     user_id: user.id,
     riot_puuid: params.identity.puuid,
@@ -102,8 +94,12 @@ export async function saveRiotAccountLink(params: {
     riot_tag_line: params.identity.tagLine,
     region: params.identity.region,
     is_verified: params.verified,
-    access_token_encrypted: params.tokens.accessToken,
-    refresh_token_encrypted: params.tokens.refreshToken,
+    access_token_encrypted: encryptTokenForStorage(params.tokens.accessToken, {
+      allowPlaintextFallback,
+    }),
+    refresh_token_encrypted: encryptTokenForStorage(params.tokens.refreshToken, {
+      allowPlaintextFallback,
+    }),
     token_expires_at: params.tokens.expiresAt.toISOString(),
     updated_at: new Date().toISOString(),
   } satisfies Record<string, unknown>;
