@@ -12,22 +12,16 @@
  */
 
 import "server-only";
+import { REGION_TO_ROUTING, type RiotRegion } from "./regions";
 
-export type RiotRegion = "NA" | "EU" | "AP";
-
-/**
- * Riot Account-v1 uses a "routing value" that differs from the ranked region.
- * - NA -> americas
- * - EU -> europe
- * - AP -> asia
- */
-export const REGION_TO_ROUTING: Record<RiotRegion, "americas" | "europe" | "asia"> = {
-  NA: "americas",
-  EU: "europe",
-  AP: "asia",
-};
-
-export const SUPPORTED_REGIONS: RiotRegion[] = ["NA", "EU", "AP"];
+// Re-export the client-safe pieces so existing `@/lib/riot/config` consumers
+// (server components, route handlers) keep working unchanged.
+export {
+  SUPPORTED_REGIONS,
+  REGION_TO_ROUTING,
+  isSupportedRegion,
+} from "./regions";
+export type { RiotRegion } from "./regions";
 
 export const RIOT_SCOPES = ["openid", "offline_access"].join(" ");
 
@@ -78,8 +72,4 @@ export function getRiotConfig(): RiotConfig {
 
 export function isMockMode(): boolean {
   return getRiotConfig().mock;
-}
-
-export function isSupportedRegion(value: unknown): value is RiotRegion {
-  return typeof value === "string" && (SUPPORTED_REGIONS as string[]).includes(value);
 }
