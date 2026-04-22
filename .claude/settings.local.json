@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/rs/Documents/Codex/2026-04-22-you-are-helping-me-build-the remote -v)"
+    ]
+  }
+}
