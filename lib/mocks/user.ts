@@ -14,4 +14,6 @@ export const mockSettings: UserSettings = {
   preferredAgents: ["Sova", "Skye", "KAY/O"],
   profileVisibility: "public",
   emailUpdates: true,
+  weeklyRecap: true,
+  autoSync: true,
 };

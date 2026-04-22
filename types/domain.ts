@@ -2,6 +2,19 @@ export type MatchResult = "win" | "loss";
 
 export type Role = "duelist" | "initiator" | "controller" | "sentinel";
 
+export type Side = "attack" | "defense";
+
+export type RoundBuyType = "pistol" | "eco" | "force" | "full-buy" | "bonus";
+
+export type RoundHighlight =
+  | "first-blood"
+  | "clutch"
+  | "ace"
+  | "triple-kill"
+  | "retake"
+  | "save"
+  | "thrifty";
+
 export interface AppUser {
   id: string;
   email: string;
@@ -21,6 +34,14 @@ export interface DashboardOverview {
   avgCombatScore: number;
   kdRatio: number;
   headshotPercentage: number;
+  /** Percentage point delta vs previous window (can be negative). */
+  winRateDelta?: number;
+  acsDelta?: number;
+  kdDelta?: number;
+  hsDelta?: number;
+  peakRank?: string;
+  /** 0–100 progress toward next tier, useful for progress rings. */
+  rankProgress?: number;
 }
 
 export interface Kda {
@@ -37,6 +58,31 @@ export interface MatchPerformance {
   defuses: number;
 }
 
+export interface MatchRound {
+  roundNumber: number;
+  winner: "player" | "enemy";
+  side: Side;
+  buyType: RoundBuyType;
+  playerKills: number;
+  playerDied: boolean;
+  highlight?: RoundHighlight;
+}
+
+export interface MatchHighlight {
+  roundNumber: number;
+  label: string;
+  description: string;
+  kind: "best" | "worst";
+}
+
+export interface PerformanceBenchmark {
+  metric: "acs" | "kd" | "hsPercentage" | "firstBloods";
+  label: string;
+  playerValue: number;
+  averageValue: number;
+  unit?: "percent" | "count" | "ratio";
+}
+
 export interface ValorantMatch {
   id: string;
   playedAtIso: string;
@@ -49,6 +95,11 @@ export interface ValorantMatch {
   kda: Kda;
   hsPercentage: number;
   performance: MatchPerformance;
+  /** Optional deep data surfaced on match detail page. */
+  rounds?: MatchRound[];
+  highlights?: MatchHighlight[];
+  benchmarks?: PerformanceBenchmark[];
+  durationMinutes?: number;
 }
 
 export interface WinRateTrendPoint {
@@ -88,4 +139,8 @@ export interface UserSettings {
   preferredAgents: string[];
   profileVisibility: "private" | "friends" | "public";
   emailUpdates: boolean;
+  /** Toggle for weekly performance recap email. */
+  weeklyRecap?: boolean;
+  /** Toggle for auto-sync match data. */
+  autoSync?: boolean;
 }

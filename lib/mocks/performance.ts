@@ -9,6 +9,12 @@ export const mockOverview: DashboardOverview = {
   avgCombatScore: 236,
   kdRatio: 1.18,
   headshotPercentage: 27.9,
+  winRateDelta: 3.2,
+  acsDelta: 8,
+  kdDelta: 0.06,
+  hsDelta: -1.1,
+  peakRank: "Immortal 1",
+  rankProgress: 64,
 };
 
 export const mockAgentPerformance: AgentPerformance[] = [
