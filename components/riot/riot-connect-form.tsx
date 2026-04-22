@@ -13,7 +13,7 @@ interface RiotConnectFormProps {
 /**
  * Region picker + "Authorize with Riot" button.
  *
- * Submits a plain GET to `/api/riot/connect` so it still works without JS,
+ * Submits a plain GET to `/api/riot/start` so it still works without JS,
  * but shows a pending spinner while the browser navigates to Riot.
  */
 export function RiotConnectForm({ defaultRegion, mock }: RiotConnectFormProps) {
@@ -22,7 +22,7 @@ export function RiotConnectForm({ defaultRegion, mock }: RiotConnectFormProps) {
 
   return (
     <form
-      action="/api/riot/connect"
+      action="/api/riot/start"
       method="get"
       onSubmit={() => startTransition(() => {})}
       className="grid gap-3 sm:grid-cols-[1fr_auto]"

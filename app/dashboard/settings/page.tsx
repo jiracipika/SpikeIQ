@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { getValorantService } from "@/lib/services";
 import { getConnectedRiotAccount } from "@/lib/riot/store";
+import { isMockMode } from "@/lib/riot/config";
 
 export default async function SettingsPage() {
   const service = await getValorantService();
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
     service.getSettingsPageData(),
     getConnectedRiotAccount(),
   ]);
+  const mock = isMockMode();
 
   return (
     <div className="space-y-6">
@@ -97,6 +99,7 @@ export default async function SettingsPage() {
                 <Badge variant="success">
                   <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden /> Linked
                 </Badge>
+                {mock ? <Badge variant="warning">Demo</Badge> : null}
                 <Button variant="outline" size="sm" disabled>
                   <RefreshCcw className="h-4 w-4" /> Sync now
                 </Button>
