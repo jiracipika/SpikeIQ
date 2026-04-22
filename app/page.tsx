@@ -1,10 +1,11 @@
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { MarketingFooter } from "@/components/layout/marketing-footer";
 import { Hero } from "@/components/landing/hero";
+import { TrustStrip } from "@/components/landing/trust-strip";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
-import { Testimonials } from "@/components/landing/testimonials";
+import { Outcomes } from "@/components/landing/outcomes";
 import { CTA } from "@/components/landing/cta";
 
 export default function HomePage() {
@@ -13,12 +14,17 @@ export default function HomePage() {
       <MarketingHeader />
       <main className="flex-1">
         <Hero />
-        <section id="preview" className="mx-auto -mt-4 max-w-6xl px-4 pb-20 md:-mt-6 md:px-6">
+        <section
+          id="preview"
+          aria-label="Dashboard preview"
+          className="mx-auto max-w-6xl px-4 pb-20 pt-2 md:px-6 md:pb-24"
+        >
           <DashboardPreview />
         </section>
+        <TrustStrip />
         <Features />
         <HowItWorks />
-        <Testimonials />
+        <Outcomes />
         <CTA />
       </main>
       <MarketingFooter />

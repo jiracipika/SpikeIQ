@@ -8,7 +8,7 @@ import { MatchHighlights } from "@/components/dashboard/match-highlights";
 import { PerformanceComparison } from "@/components/dashboard/performance-comparison";
 import { RoundBreakdown } from "@/components/dashboard/round-breakdown";
 import { formatMatchDate, formatPercent, cn } from "@/lib/utils";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
 
 interface MatchDetailPageProps {
   params: Promise<{ matchId: string }>;
@@ -16,7 +16,8 @@ interface MatchDetailPageProps {
 
 export default async function MatchDetailPage({ params }: MatchDetailPageProps) {
   const { matchId } = await params;
-  const { match } = await valorantService.getMatchDetailPageData(matchId);
+  const service = await getValorantService();
+  const { match } = await service.getMatchDetailPageData(matchId);
 
   if (!match) {
     notFound();

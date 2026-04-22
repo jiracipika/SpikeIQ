@@ -1,13 +1,28 @@
-import { Bell, CheckCircle2, Link2, LogOut, Mail, RefreshCcw, Shield, Trash2 } from "lucide-react";
+import Link from "next/link";
+import {
+  Bell,
+  CheckCircle2,
+  Link2,
+  LogOut,
+  Mail,
+  RefreshCcw,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { valorantService } from "@/lib/services";
+import { getValorantService } from "@/lib/services";
+import { getConnectedRiotAccount } from "@/lib/riot/store";
 
 export default async function SettingsPage() {
-  const { user, settings } = await valorantService.getSettingsPageData();
+  const service = await getValorantService();
+  const [{ user, settings }, riotAccount] = await Promise.all([
+    service.getSettingsPageData(),
+    getConnectedRiotAccount(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -42,31 +57,67 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <span
+              className={
+                "flex h-10 w-10 items-center justify-center rounded-md " +
+                (riotAccount
+                  ? "bg-success/15 text-success"
+                  : "bg-primary/10 text-primary")
+              }
+            >
               <Link2 className="h-5 w-5" aria-hidden />
             </span>
             <div>
-              <p className="text-sm font-medium text-foreground">
-                {user.displayName}
-                <span className="ml-1 font-mono text-muted-foreground">{user.tagline}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {user.accountLinked ? "Connected · syncing automatically" : "Not connected yet"}
-              </p>
+              {riotAccount ? (
+                <>
+                  <p className="text-sm font-medium text-foreground">
+                    {riotAccount.gameName}
+                    <span className="ml-1 font-mono text-muted-foreground">
+                      #{riotAccount.tagLine}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Region {riotAccount.region} · Connected{" "}
+                    {new Date(riotAccount.createdAt).toLocaleDateString()}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-foreground">Not connected</p>
+                  <p className="text-xs text-muted-foreground">
+                    Link your Riot account to auto-import match history.
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {user.accountLinked ? (
-              <Badge variant="success">
-                <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden /> Linked
-              </Badge>
-            ) : null}
-            <Button variant="outline" size="sm">
-              <RefreshCcw className="h-4 w-4" /> Sync now
-            </Button>
-            <Button variant="ghost" size="sm" className="text-danger hover:text-danger">
-              Disconnect
-            </Button>
+            {riotAccount ? (
+              <>
+                <Badge variant="success">
+                  <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden /> Linked
+                </Badge>
+                <Button variant="outline" size="sm" disabled>
+                  <RefreshCcw className="h-4 w-4" /> Sync now
+                </Button>
+                <form action="/api/riot/disconnect" method="post">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="text-danger hover:text-danger"
+                  >
+                    Disconnect
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <Link href="/connect-riot">
+                <Button size="sm">
+                  <Link2 className="h-4 w-4" /> Connect Riot account
+                </Button>
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -141,9 +192,11 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
-          <Button variant="outline">
-            <LogOut className="h-4 w-4" /> Sign out everywhere
-          </Button>
+          <form action="/auth/logout" method="post">
+            <Button type="submit" variant="outline">
+              <LogOut className="h-4 w-4" /> Sign out
+            </Button>
+          </form>
           <Button variant="outline" className="border-danger/40 text-danger hover:bg-danger/10">
             <Trash2 className="h-4 w-4" /> Delete account
           </Button>

@@ -8,6 +8,7 @@ import type {
   ValorantMatch,
   WinRateTrendPoint,
 } from "@/types/domain";
+import type { AnalyticsSnapshot } from "@/lib/analytics/types";
 
 export interface ValorantDataRepository {
   getCurrentUser(): Promise<AppUser | null>;
@@ -20,4 +21,9 @@ export interface ValorantDataRepository {
   getWinRateTrend(userId: string): Promise<WinRateTrendPoint[]>;
   getCoachingInsights(userId: string): Promise<CoachingInsight[]>;
   getUserSettings(userId: string): Promise<UserSettings>;
+  /**
+   * Compute the full analytics snapshot for a user. Implementations may cache
+   * the result or compute on demand — callers should treat it as a read.
+   */
+  getAnalyticsSnapshot(userId: string): Promise<AnalyticsSnapshot>;
 }

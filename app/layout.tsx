@@ -17,24 +17,31 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "SpikeIQ — VALORANT Performance Analytics",
+    default: "SpikeIQ — See why you win. Fix why you lose.",
     template: "%s · SpikeIQ",
   },
   description:
-    "SpikeIQ turns your VALORANT match history into actionable coaching insights — win rate trends, agent mastery, map edges, and mistakes to fix.",
+    "SpikeIQ is the coaching layer for VALORANT. Turn your match history into a personalized improvement plan — agent mastery, map edges, and round-level insights that translate directly to RR.",
   keywords: [
     "VALORANT analytics",
+    "VALORANT coaching",
     "VALORANT stats",
     "Leetify for VALORANT",
     "ranked improvement",
     "coaching insights",
-    "tracker.gg",
+    "tracker.gg alternative",
   ],
   openGraph: {
-    title: "SpikeIQ — VALORANT Performance Analytics",
+    title: "SpikeIQ — See why you win. Fix why you lose.",
     description:
-      "Turn your match history into a focused improvement plan. Win rate trends, agent mastery, and coaching-style insights.",
+      "The coaching layer for VALORANT. Agent mastery, map edges, and round-level insights that translate directly to RR.",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SpikeIQ — See why you win. Fix why you lose.",
+    description:
+      "The coaching layer for VALORANT. Agent mastery, map edges, and coaching-style insights.",
   },
 };
 

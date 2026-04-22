@@ -3,6 +3,7 @@ import { ArrowRight, Crosshair, Flame, Target, TrendingUp } from "lucide-react";
 import { AgentPerformanceList } from "@/components/dashboard/agent-performance-list";
 import { CoachingInsightsPanel } from "@/components/dashboard/coaching-insights-panel";
 import { MapPerformanceList } from "@/components/dashboard/map-performance-list";
+import { PerformanceScoresCard } from "@/components/dashboard/performance-scores-card";
 import { RecentMatchesTable } from "@/components/dashboard/recent-matches-table";
 import { PlayerSummaryCard } from "@/components/dashboard/player-summary-card";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -10,9 +11,11 @@ import { WinrateTrendChart } from "@/components/dashboard/winrate-trend-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPercent } from "@/lib/utils";
-import { valorantService } from "@/lib/services";
+import { toCoachingInsights } from "@/lib/analytics";
+import { getValorantService } from "@/lib/services";
 
 export default async function DashboardOverviewPage() {
+  const service = await getValorantService();
   const {
     user,
     overview,
@@ -21,10 +24,36 @@ export default async function DashboardOverviewPage() {
     agentPerformance,
     mapPerformance,
     insights,
-  } = await valorantService.getDashboardPageData();
+    snapshot,
+  } = await service.getDashboardPageData();
+
+  const hasData = overview.totalMatches > 0;
+  // Prefer persisted insights; fall back to freshly-generated ones so the panel
+  // is never empty for a player with match history.
+  const displayedInsights =
+    insights.length > 0 ? insights : toCoachingInsights(snapshot.insights);
 
   return (
     <div className="space-y-6">
+      {!hasData ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-base">Welcome to SpikeIQ</CardTitle>
+            <CardDescription>
+              Connect your Riot account to import match history and unlock personalized insights.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/connect-riot">
+              <Button>
+                Connect Riot account
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <PlayerSummaryCard user={user} overview={overview} recentForm={recentMatches} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -76,8 +105,42 @@ export default async function DashboardOverviewPage() {
             <WinrateTrendChart data={trend} showAcs />
           </CardContent>
         </Card>
-        <CoachingInsightsPanel insights={insights} limit={3} />
+        <CoachingInsightsPanel insights={displayedInsights} limit={3} />
       </section>
+
+      {hasData ? (
+        <section className="grid gap-6 xl:grid-cols-3">
+          <PerformanceScoresCard scores={snapshot.scores} className="xl:col-span-2" />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Side performance</CardTitle>
+              <CardDescription>Attack vs defense round win rate</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <SideRow label="Attack" value={snapshot.sides.attackRoundWinRate} />
+              <SideRow label="Defense" value={snapshot.sides.defenseRoundWinRate} />
+              <div className="flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground">
+                <span>Recent WR (last 10)</span>
+                <span className="font-mono text-foreground">
+                  {formatPercent(snapshot.core.recentWinRate)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>First death rate</span>
+                <span className="font-mono text-foreground">
+                  {formatPercent(snapshot.core.firstDeathRate)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Clutch rate</span>
+                <span className="font-mono text-foreground">
+                  {formatPercent(snapshot.core.clutchRate)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
@@ -127,6 +190,37 @@ export default async function DashboardOverviewPage() {
           </CardContent>
         </Card>
       </section>
+    </div>
+  );
+}
+
+function SideRow({ label, value }: { label: string; value: number }) {
+  const tone = value >= 55 ? "success" : value >= 45 ? "primary" : "danger";
+  const track =
+    tone === "success" ? "bg-success/15" : tone === "danger" ? "bg-danger/15" : "bg-primary/10";
+  const bar =
+    tone === "success" ? "bg-success" : tone === "danger" ? "bg-danger" : "bg-primary";
+  const text =
+    tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-primary";
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className={`font-mono font-semibold ${text}`}>{value.toFixed(1)}%</span>
+      </div>
+      <div
+        className={`h-1.5 w-full overflow-hidden rounded-full ${track}`}
+        role="progressbar"
+        aria-label={`${label} round win rate`}
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className={`h-full rounded-full transition-[width] ${bar}`}
+          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+        />
+      </div>
     </div>
   );
 }
