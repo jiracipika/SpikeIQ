@@ -16,13 +16,15 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { getValorantService } from "@/lib/services";
 import { getConnectedRiotAccount } from "@/lib/riot/store";
-import { isMockMode } from "@/lib/riot/config";
+import { isDevSelfTestEnabled, isMockMode, SUPPORTED_REGIONS } from "@/lib/riot/config";
 
 type SyncStatus = "success" | "error" | null;
 
 interface SettingsPageProps {
   searchParams: Promise<{
     sync?: string;
+    source?: string;
+    riot_id?: string;
     code?: string;
     mode?: string;
     fetched?: string;
@@ -36,6 +38,9 @@ const SYNC_ERROR_MESSAGES: Record<string, string> = {
   unauthenticated: "Your session expired before sync started. Please sign in and try again.",
   riot_not_connected: "No verified Riot account is linked yet. Connect Riot first.",
   missing_riot_api_key: "Server Riot API key is missing. Add RIOT_API_KEY and retry.",
+  self_test_disabled: "Self-test sync is disabled in this environment.",
+  invalid_riot_id: "Enter a valid Riot ID (game name and tag line) and try again.",
+  riot_id_not_found: "We couldn't find that Riot ID in the selected region.",
   sync_failed: "Sync failed unexpectedly. Please retry in a minute.",
 };
 
@@ -50,6 +55,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     getConnectedRiotAccount(),
   ]);
   const mock = isMockMode();
+  const selfTestEnabled = isDevSelfTestEnabled();
 
   return (
     <div className="space-y-6">
@@ -64,8 +70,19 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <Card className="border-success/40 bg-success/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
             <p className="text-foreground">
-              Sync complete: fetched {params.fetched ?? "0"}, inserted {params.inserted ?? "0"},
-              updated {params.updated ?? "0"}, analyzed {params.analyzed ?? "0"} matches.
+              {params.source === "self_test" ? (
+                <>
+                  Self-test sync complete for{" "}
+                  <span className="font-mono">{params.riot_id ?? "provided Riot ID"}</span>: fetched{" "}
+                  {params.fetched ?? "0"}, inserted {params.inserted ?? "0"}, updated{" "}
+                  {params.updated ?? "0"}, analyzed {params.analyzed ?? "0"} matches.
+                </>
+              ) : (
+                <>
+                  Sync complete: fetched {params.fetched ?? "0"}, inserted {params.inserted ?? "0"},
+                  updated {params.updated ?? "0"}, analyzed {params.analyzed ?? "0"} matches.
+                </>
+              )}
             </p>
             <Badge variant={params.mode === "mock" ? "warning" : "success"}>
               {params.mode === "mock" ? "Mock mode" : "Live mode"}
@@ -104,7 +121,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <CardTitle className="text-base">Riot account</CardTitle>
           <CardDescription>Sync match data from your linked Riot account.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
               className={
@@ -171,6 +189,36 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               </Link>
             )}
           </div>
+          </div>
+
+          {!riotAccount && selfTestEnabled ? (
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-foreground">
+                Dev-only self-test sync
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pull your own stats without RSO approval by entering Riot ID. This is disabled in production.
+              </p>
+              <form action="/api/riot/sync-self-test" method="post" className="mt-3 grid gap-2 md:grid-cols-4">
+                <Input name="gameName" placeholder="Game name" required />
+                <Input name="tagLine" placeholder="Tag line (without #)" required />
+                <select
+                  name="region"
+                  defaultValue={user.region}
+                  className="focus-ring h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground"
+                >
+                  {SUPPORTED_REGIONS.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </select>
+                <Button type="submit" variant="outline">
+                  <RefreshCcw className="h-4 w-4" /> Load my stats
+                </Button>
+              </form>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

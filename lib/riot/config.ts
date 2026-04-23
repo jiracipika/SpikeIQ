@@ -83,3 +83,13 @@ export function allowPlaintextTokenStorageInDev(): boolean {
   if (process.env.NODE_ENV === "production") return false;
   return process.env.RIOT_ALLOW_PLAINTEXT_TOKENS_IN_DEV !== "false";
 }
+
+/**
+ * Enables the dev-only Riot ID -> stats self-test flow.
+ *
+ * Never enabled in production, even if env is set.
+ */
+export function isDevSelfTestEnabled(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.RIOT_ENABLE_SELF_TEST !== "false";
+}

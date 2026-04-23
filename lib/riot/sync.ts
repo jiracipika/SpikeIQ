@@ -5,7 +5,13 @@ import { loadAnalyticsInputs } from "@/lib/analytics/supabase-loader";
 import { runAnalytics } from "@/lib/analytics";
 import { persistAnalytics } from "@/lib/analytics/persist";
 import { mockMatches } from "@/lib/mocks/matches";
-import { getRiotConfig, isMockMode, type RiotRegion } from "@/lib/riot/config";
+import {
+  getRiotConfig,
+  isDevSelfTestEnabled,
+  isMockMode,
+  isSupportedRegion,
+  type RiotRegion,
+} from "@/lib/riot/config";
 import type { Role, RoundBuyType, RoundHighlight, Side, ValorantMatch } from "@/types/domain";
 
 type QueueType = "competitive" | "unrated" | "premier";
@@ -71,6 +77,15 @@ export interface RiotSyncResult {
   analyzed: number;
 }
 
+interface SyncInternalParams {
+  supabase: SupabaseClient;
+  userId: string;
+  puuid: string;
+  region: RiotRegion;
+  limit: number;
+  forceLive: boolean;
+}
+
 const AGENT_ROLE: Record<string, Role> = {
   Astra: "controller",
   Breach: "initiator",
@@ -123,25 +138,79 @@ export async function syncLatestRiotMatches(params?: { limit?: number }): Promis
     throw new Error("riot_not_connected");
   }
 
-  const parsedRecords = isMockMode()
-    ? buildMockMatchRecords(user.id, limit)
+  return syncLatestRiotMatchesForIdentity({
+    supabase,
+    userId: user.id,
+    puuid: linked.riot_puuid,
+    region: linked.region,
+    limit,
+    forceLive: false,
+  });
+}
+
+export async function syncLatestRiotMatchesForRiotId(params: {
+  gameName: string;
+  tagLine: string;
+  region: RiotRegion;
+  limit?: number;
+}): Promise<RiotSyncResult & { puuid: string }> {
+  if (!isDevSelfTestEnabled()) {
+    throw new Error("self_test_disabled");
+  }
+
+  const gameName = params.gameName.trim();
+  const tagLine = params.tagLine.replace(/^#/, "").trim();
+  if (!gameName || !tagLine) {
+    throw new Error("invalid_riot_id");
+  }
+
+  const limit = Math.max(1, Math.min(params.limit ?? 20, 40));
+  const region: RiotRegion = isSupportedRegion(params.region) ? params.region : "NA";
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("unauthenticated");
+  }
+
+  const puuid = await fetchPuuidByRiotId({ gameName, tagLine, region });
+  const result = await syncLatestRiotMatchesForIdentity({
+    supabase,
+    userId: user.id,
+    puuid,
+    region,
+    limit,
+    forceLive: true,
+  });
+
+  return {
+    ...result,
+    puuid,
+  };
+}
+
+async function syncLatestRiotMatchesForIdentity(params: SyncInternalParams): Promise<RiotSyncResult> {
+  const useMock = !params.forceLive && isMockMode();
+  const parsedRecords = useMock
+    ? buildMockMatchRecords(params.userId, params.limit)
     : await fetchAndParseRealMatchRecords({
-        userId: user.id,
-        puuid: linked.riot_puuid,
-        region: linked.region,
-        limit,
+        userId: params.userId,
+        puuid: params.puuid,
+        region: params.region,
+        limit: params.limit,
       });
 
-  const persisted = await persistRiotMatches(supabase, user.id, parsedRecords);
+  const persisted = await persistRiotMatches(params.supabase, params.userId, parsedRecords);
 
-  const { matches, rounds } = await loadAnalyticsInputs(supabase, user.id);
+  const { matches, rounds } = await loadAnalyticsInputs(params.supabase, params.userId);
   const snapshot = runAnalytics(matches, rounds);
   if (matches.length > 0) {
-    await persistAnalytics(supabase, user.id, snapshot);
+    await persistAnalytics(params.supabase, params.userId, snapshot);
   }
 
   return {
-    mode: isMockMode() ? "mock" : "real",
+    mode: useMock ? "mock" : "real",
     fetched: parsedRecords.length,
     inserted: persisted.inserted,
     updated: persisted.updated,
@@ -245,6 +314,40 @@ async function fetchCompetitiveMatchIds(
 
   const json = (await res.json()) as { history?: Array<{ matchId?: string }> };
   return (json.history ?? []).map((h) => h.matchId).filter((id): id is string => Boolean(id));
+}
+
+async function fetchPuuidByRiotId(params: {
+  gameName: string;
+  tagLine: string;
+  region: RiotRegion;
+}): Promise<string> {
+  const cfg = getRiotConfig();
+  const token = process.env.RIOT_API_KEY;
+  if (!token) {
+    throw new Error("missing_riot_api_key");
+  }
+
+  const path = `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(params.gameName)}/${encodeURIComponent(
+    params.tagLine,
+  )}`;
+  const res = await fetch(`${cfg.accountApiBase(params.region)}${path}`, {
+    headers: { "X-Riot-Token": token },
+    cache: "no-store",
+  });
+
+  if (res.status === 404) {
+    throw new Error("riot_id_not_found");
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`riot_account_lookup_failed_${res.status}:${text.slice(0, 200)}`);
+  }
+
+  const json = (await res.json()) as { puuid?: string };
+  if (!json.puuid) {
+    throw new Error("riot_id_not_found");
+  }
+  return json.puuid;
 }
 
 async function fetchMatchDetail(matchId: string, region: RiotRegion): Promise<unknown> {

@@ -10,6 +10,7 @@
   - Start: `GET /api/riot/start?region=NA|EU|AP`
   - Callback: `GET /api/riot/callback?code=...&state=...`
   - Manual sync: `POST /api/riot/sync`
+  - Dev self-test sync (non-production only): `POST /api/riot/sync-self-test`
   - Legacy compatibility retained:
     - `/api/riot/connect` -> alias of `/api/riot/start`
     - `/auth/riot/callback` -> alias of `/api/riot/callback`
@@ -75,6 +76,7 @@
 - `RIOT_ALLOW_PLAINTEXT_TOKENS_IN_DEV`
 - `RIOT_API_KEY`
 - `RIOT_SYNC_MATCH_LIMIT`
+- `RIOT_ENABLE_SELF_TEST`
 
 ## 5) Mock Mode Design
 

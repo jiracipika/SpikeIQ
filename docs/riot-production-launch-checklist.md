@@ -15,6 +15,7 @@
   - `RIOT_OAUTH_MOCK=false`
   - `RIOT_ALLOW_PLAINTEXT_TOKENS_IN_DEV=false`
   - `RIOT_SYNC_MATCH_LIMIT` (recommended `20`)
+  - `RIOT_ENABLE_SELF_TEST=false`
 - Validate `RIOT_TOKEN_ENCRYPTION_KEY` decodes to exactly 32 bytes.
 - Confirm no Riot secrets exist in client-exposed env vars.
 
