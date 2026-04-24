@@ -15,7 +15,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SUPPORTED_REGIONS, type RiotRegion } from "@/lib/riot/regions";
 import { lookupPlayerWithStats } from "@/app/actions/riot";
-import { type ValorantMatchSummary, VALORANT_TIER_NAMES } from "@/lib/riot/api";
+import { type ValorantMatchSummary, VALORANT_TIER_NAMES } from "@/lib/riot/valorant-types";
 
 type PlayerResult = {
   gameName: string;

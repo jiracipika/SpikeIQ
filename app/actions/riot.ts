@@ -1,6 +1,7 @@
 "use server";
 
-import { fetchPlayerByName, fetchValorantMatchStats, type ValorantMatchSummary } from "@/lib/riot/api";
+import { fetchPlayerByName, fetchValorantMatchStats } from "@/lib/riot/api";
+import { type ValorantMatchSummary } from "@/lib/riot/valorant-types";
 import { isSupportedRegion } from "@/lib/riot/regions";
 
 export async function lookupPlayer(gameName: string, tagLine: string, region: string) {
