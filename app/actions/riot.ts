@@ -1,6 +1,7 @@
 "use server";
 
-import { fetchPlayerByName } from "@/lib/riot/api";
+import { fetchPlayerByName, fetchValorantMatchStats, type ValorantMatchSummary } from "@/lib/riot/api";
+import { isSupportedRegion } from "@/lib/riot/regions";
 
 export async function lookupPlayer(gameName: string, tagLine: string, region: string) {
   if (!gameName.trim()) {
@@ -17,5 +18,38 @@ export async function lookupPlayer(gameName: string, tagLine: string, region: st
     tagLine: player.tagLine,
     summonerLevel: player.summonerLevel,
     puuid: player.puuid,
+  };
+}
+
+export async function lookupPlayerWithStats(
+  gameName: string,
+  tagLine: string,
+  region: string,
+): Promise<
+  | { error: string }
+  | {
+      gameName: string;
+      tagLine: string;
+      summonerLevel: number;
+      puuid: string;
+      matches: ValorantMatchSummary[];
+    }
+> {
+  if (!gameName.trim()) return { error: "Enter your player name" };
+  if (!isSupportedRegion(region)) return { error: "Unsupported region" };
+
+  const player = await fetchPlayerByName(gameName, tagLine, region);
+  if (!player) {
+    return { error: `Player "${gameName}#${tagLine}" not found on ${region}. Check spelling and region.` };
+  }
+
+  const matches = await fetchValorantMatchStats(player.puuid, region, 5);
+
+  return {
+    gameName: player.gameName,
+    tagLine: player.tagLine,
+    summonerLevel: player.summonerLevel,
+    puuid: player.puuid,
+    matches,
   };
 }

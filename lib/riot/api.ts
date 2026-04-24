@@ -1,12 +1,177 @@
 import "server-only";
-import { type SupabaseClient } from "@supabase/supabase-js";
-import { REGION_TO_ROUTING, isSupportedRegion, type RiotRegion } from "./regions";
+import { isSupportedRegion, type RiotRegion } from "./regions";
 
 const REGION_TO_PLATFORM: Record<RiotRegion, string> = {
   NA: "na1",
   EU: "euw1",
   AP: "kr",
 };
+
+const REGION_TO_VAL_ROUTING: Record<RiotRegion, string> = {
+  NA: "na",
+  EU: "eu",
+  AP: "ap",
+};
+
+export interface ValorantMatchSummary {
+  matchId: string;
+  map: string;
+  queue: string;
+  won: boolean | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  acs: number;
+  agent: string;
+  competitiveTier: number;
+  gameStartMillis: number;
+  roundsWon: number;
+  roundsLost: number;
+  accountLevel: number;
+}
+
+interface ValMatchListResponse {
+  puuid: string;
+  history: Array<{
+    matchId: string;
+    gameStartTimeMillis: number;
+    teamId: string;
+  }>;
+}
+
+interface ValMatchDetail {
+  matchInfo: {
+    matchId: string;
+    mapId: string;
+    gameStartMillis: number;
+    queueID: string;
+    gameLengthMillis: number;
+  };
+  players: Array<{
+    puuid: string;
+    teamId: string;
+    characterId: string;
+    stats: { score: number; roundsPlayed: number; kills: number; deaths: number; assists: number };
+    competitiveTier: number;
+    accountLevel: number;
+  }>;
+  teams: Array<{ teamId: string; won: boolean; roundsWon: number; roundsPlayed: number }>;
+}
+
+interface ValContentResponse {
+  characters: Array<{ id: string; name: string }>;
+  maps: Array<{ id: string; name: string; assetPath: string }>;
+}
+
+async function fetchValorantContent(valRegion: string): Promise<ValContentResponse | null> {
+  const apiKey = process.env.RIOT_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://${valRegion}.api.riotgames.com/val/content/v1/contents`,
+      { headers: { "X-Riot-Token": apiKey }, next: { revalidate: 3600 } },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function extractMapName(mapId: string, maps?: ValContentResponse["maps"]): string {
+  if (maps) {
+    const match = maps.find((m) => m.assetPath === mapId || m.id === mapId);
+    if (match) return match.name;
+  }
+  const segment = mapId.split("/").pop() ?? mapId;
+  return segment;
+}
+
+export const VALORANT_TIER_NAMES: Record<number, string> = {
+  0: "Unranked", 3: "Iron 1", 4: "Iron 2", 5: "Iron 3",
+  6: "Bronze 1", 7: "Bronze 2", 8: "Bronze 3",
+  9: "Silver 1", 10: "Silver 2", 11: "Silver 3",
+  12: "Gold 1", 13: "Gold 2", 14: "Gold 3",
+  15: "Platinum 1", 16: "Platinum 2", 17: "Platinum 3",
+  18: "Diamond 1", 19: "Diamond 2", 20: "Diamond 3",
+  21: "Ascendant 1", 22: "Ascendant 2", 23: "Ascendant 3",
+  24: "Immortal 1", 25: "Immortal 2", 26: "Immortal 3",
+  27: "Radiant",
+};
+
+export async function fetchValorantMatchStats(
+  puuid: string,
+  region: RiotRegion,
+  count = 5,
+): Promise<ValorantMatchSummary[]> {
+  const apiKey = process.env.RIOT_API_KEY;
+  if (!apiKey) return [];
+
+  const valRegion = REGION_TO_VAL_ROUTING[region];
+
+  const [listRes, content] = await Promise.all([
+    fetch(
+      `https://${valRegion}.api.riotgames.com/val/match/v1/matchlists/by-puuid/${encodeURIComponent(puuid)}`,
+      { headers: { "X-Riot-Token": apiKey }, cache: "no-store" },
+    ),
+    fetchValorantContent(valRegion),
+  ]);
+
+  if (!listRes.ok) {
+    console.error(`[val] matchlist fetch failed: ${listRes.status}`);
+    return [];
+  }
+
+  const list = (await listRes.json()) as ValMatchListResponse;
+  const recentIds = list.history.slice(0, count).map((h) => h.matchId);
+
+  const charMap = new Map(content?.characters.map((c) => [c.id, c.name]) ?? []);
+
+  const details = await Promise.all(
+    recentIds.map(async (matchId) => {
+      try {
+        const res = await fetch(
+          `https://${valRegion}.api.riotgames.com/val/match/v1/matches/${encodeURIComponent(matchId)}`,
+          { headers: { "X-Riot-Token": apiKey }, cache: "no-store" },
+        );
+        if (!res.ok) return null;
+        return (await res.json()) as ValMatchDetail;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const summaries: ValorantMatchSummary[] = [];
+  for (const detail of details) {
+    if (!detail) continue;
+    const player = detail.players.find((p) => p.puuid === puuid);
+    if (!player) continue;
+
+    const team = detail.teams.find((t) => t.teamId === player.teamId);
+    const opponentTeam = detail.teams.find((t) => t.teamId !== player.teamId);
+    const roundsPlayed = player.stats.roundsPlayed || 1;
+
+    summaries.push({
+      matchId: detail.matchInfo.matchId,
+      map: extractMapName(detail.matchInfo.mapId, content?.maps),
+      queue: detail.matchInfo.queueID || "unknown",
+      won: team?.won ?? null,
+      kills: player.stats.kills,
+      deaths: player.stats.deaths,
+      assists: player.stats.assists,
+      acs: Math.round(player.stats.score / roundsPlayed),
+      agent: charMap.get(player.characterId) ?? player.characterId.slice(0, 8),
+      competitiveTier: player.competitiveTier,
+      gameStartMillis: detail.matchInfo.gameStartMillis,
+      roundsWon: team?.roundsWon ?? 0,
+      roundsLost: (opponentTeam?.roundsWon) ?? 0,
+      accountLevel: player.accountLevel,
+    });
+  }
+
+  return summaries;
+}
 
 interface RiotSummoner {
   id: string;
