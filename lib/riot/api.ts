@@ -1,5 +1,5 @@
 import "server-only";
-import { isSupportedRegion, type RiotRegion } from "./regions";
+import { REGION_TO_ROUTING, isSupportedRegion, type RiotRegion } from "./regions";
 
 const REGION_TO_PLATFORM: Record<RiotRegion, string> = {
   NA: "na1",
