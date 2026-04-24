@@ -1,0 +1,29 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.expo-export-smoke/
+
+# Native
+android/
+ios/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Misc
+.DS_Store
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# Local env
+.env
+.env.local

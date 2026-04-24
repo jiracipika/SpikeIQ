@@ -1,0 +1,28 @@
+{
+  "name": "spikeiq-mobile",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "private": true,
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild --clean",
+    "doctor": "expo-doctor",
+    "bundle:android:smoke": "expo export --platform android --output-dir .expo-export-smoke && rm -rf .expo-export-smoke"
+  },
+  "dependencies": {
+    "expo": "~52.0.0",
+    "expo-dev-client": "~5.0.6",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-safe-area-context": "4.12.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12",
+    "expo-doctor": "^1.12.4",
+    "typescript": "~5.3.3"
+  }
+}

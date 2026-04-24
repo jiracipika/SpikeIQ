@@ -1,0 +1,65 @@
+workflows:
+  expo_android_eas:
+    name: Expo Android EAS Build
+    max_build_duration: 60
+
+    environment:
+      node: 20
+      java: 17
+      groups:
+        - expo_credential
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+
+    cache:
+      cache_paths:
+        - ~/.npm
+        - /tmp/expo-cli
+        - $CM_BUILD_DIR/mobile/node_modules
+
+    scripts:
+      - name: Install mobile dependencies
+        script: |
+          cd mobile
+          npm install --no-audit --no-fund
+
+      - name: Install EAS CLI
+        script: |
+          npm install -g eas-cli
+
+      - name: Verify Expo config
+        script: |
+          cd mobile
+          npx expo config --type public
+
+      - name: Android export smoke check
+        script: |
+          cd mobile
+          npm run bundle:android:smoke
+
+      - name: Check Expo token
+        script: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN is not set. Add it in Codemagic UI under the expo_credential variable group."
+            exit 1
+          fi
+
+      - name: Build Android APK locally with EAS
+        script: |
+          cd mobile
+          export NODE_PATH="$PWD/node_modules${NODE_PATH:+:$NODE_PATH}"
+          EAS_BUILD_NO_EXPO_GO_WARNING=true eas build \
+            --platform android \
+            --profile preview \
+            --local \
+            --non-interactive \
+            --output $CM_BUILD_DIR/build.apk
+
+    artifacts:
+      - build.apk
