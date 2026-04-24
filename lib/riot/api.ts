@@ -1,5 +1,12 @@
 import "server-only";
 import { type SupabaseClient } from "@supabase/supabase-js";
+import { REGION_TO_ROUTING, isSupportedRegion, type RiotRegion } from "./regions";
+
+const REGION_TO_PLATFORM: Record<RiotRegion, string> = {
+  NA: "na1",
+  EU: "euw1",
+  AP: "kr",
+};
 
 interface RiotSummoner {
   id: string;
@@ -63,8 +70,6 @@ interface RiotMatch {
       goldEarned: number;
       goldSpent: number;
       holdPings: number;
-      totalHealsOnTeammates: number;
-      totalUnitsHealed: number;
       inhibitorKills: number;
       inhibitorTakedowns: number;
       inhibitorsLost: number;
@@ -261,6 +266,70 @@ export async function fetchRiotMatchDetail(
     return (await response.json()) as RiotMatch;
   } catch (error) {
     console.error("[v0] Failed to fetch match detail:", error);
+    return null;
+  }
+}
+
+/**
+ * Look up a player by Riot ID (gameName#tagLine) using Account-v1, then resolve
+ * their summoner level via Summoner-v4 on the region's platform shard.
+ */
+export async function fetchPlayerByName(
+  gameName: string,
+  tagLine: string,
+  region: string,
+): Promise<{ gameName: string; tagLine: string; summonerLevel: number; puuid: string } | null> {
+  const apiKey = process.env.RIOT_API_KEY;
+  if (!apiKey) {
+    console.error("[v0] RIOT_API_KEY not set");
+    return null;
+  }
+
+  if (!isSupportedRegion(region)) {
+    console.error(`[v0] Unsupported region: ${region}`);
+    return null;
+  }
+
+  const routing = REGION_TO_ROUTING[region];
+  const platform = REGION_TO_PLATFORM[region];
+
+  try {
+    const accountRes = await fetch(
+      `https://${routing}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+      { headers: { "X-Riot-Token": apiKey }, cache: "no-store" },
+    );
+
+    if (!accountRes.ok) {
+      if (accountRes.status !== 404) {
+        console.error(`[v0] Account lookup failed: ${accountRes.status}`);
+      }
+      return null;
+    }
+
+    const account = (await accountRes.json()) as {
+      puuid: string;
+      gameName: string;
+      tagLine: string;
+    };
+
+    let summonerLevel = 0;
+    const summonerRes = await fetch(
+      `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(account.puuid)}`,
+      { headers: { "X-Riot-Token": apiKey }, cache: "no-store" },
+    );
+    if (summonerRes.ok) {
+      const summoner = (await summonerRes.json()) as { summonerLevel?: number };
+      summonerLevel = summoner.summonerLevel ?? 0;
+    }
+
+    return {
+      gameName: account.gameName,
+      tagLine: account.tagLine,
+      summonerLevel,
+      puuid: account.puuid,
+    };
+  } catch (error) {
+    console.error("[v0] Failed to lookup player:", error);
     return null;
   }
 }
