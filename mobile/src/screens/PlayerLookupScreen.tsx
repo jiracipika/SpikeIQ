@@ -69,8 +69,8 @@ export function PlayerLookupScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.heading}>SpikeIQ</Text>
-          <Text style={styles.subheading}>Look up your VALORANT stats</Text>
+          <Text style={styles.heading}>RadiantIQ</Text>
+          <Text style={styles.subheading}>Your VALORANT stats, ranked</Text>
 
           <View style={styles.formCard}>
             <Text style={styles.label}>Player name</Text>

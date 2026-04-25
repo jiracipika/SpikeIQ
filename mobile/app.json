@@ -1,24 +1,31 @@
 {
   "expo": {
-    "name": "SpikeIQ",
-    "slug": "spikeiq",
+    "name": "RadiantIQ",
+    "slug": "radiantiq",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a12"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.spikeiq.app"
+      "bundleIdentifier": "com.radiantiq.app"
     },
     "android": {
-      "package": "com.spikeiq.app",
-      "edgeToEdgeEnabled": true
+      "package": "com.radiantiq.app",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a12"
+      }
     },
     "plugins": [
       "expo-dev-client"
-    ],
-    "experiments": {
-      "typedRoutes": false
-    }
+    ]
   }
 }
