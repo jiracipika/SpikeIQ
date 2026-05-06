@@ -7,6 +7,7 @@ import { mockTrend } from "@/lib/mocks/trends";
 import { mockSettings, mockUser } from "@/lib/mocks/user";
 import type { ValorantDataRepository } from "@/lib/services/contracts";
 import type { ValorantMatch } from "@/types/domain";
+import { buildMatchAdvancedAnalysis } from "@/lib/services/match-analysis";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -81,7 +82,35 @@ export class MockValorantRepository implements ValorantDataRepository {
 
   async getMatchById(_userId: string, matchId: string) {
     await wait(80);
-    return mockMatches.find((match) => match.id === matchId) ?? null;
+    const match = mockMatches.find((item) => item.id === matchId);
+    if (!match) return null;
+
+    return {
+      ...match,
+      analysis: buildMatchAdvancedAnalysis({
+        match: {
+          scoreFor: parseInt(match.scoreline.split("-")[0] ?? "0", 10),
+          scoreAgainst: parseInt(match.scoreline.split("-")[1] ?? "0", 10),
+          kills: match.kda.kills,
+          deaths: match.kda.deaths,
+          assists: match.kda.assists,
+          headshotPercent: match.hsPercentage,
+          plants: match.performance.plants,
+          defuses: match.performance.defuses,
+        },
+        rounds: (match.rounds ?? []).map((round) => ({
+          won: round.winner === "player",
+          side: round.side,
+          buyType: round.buyType,
+          kills: round.playerKills,
+          deaths: round.playerDied ? 1 : 0,
+          assists: 0,
+          firstBlood: round.highlight === "first-blood",
+          firstDeath: round.playerDied && round.playerKills === 0,
+          clutch: round.highlight === "clutch",
+        })),
+      }),
+    };
   }
 
   async getAgentPerformance(_userId: string) {

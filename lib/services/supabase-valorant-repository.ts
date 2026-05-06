@@ -20,6 +20,7 @@ import type {
 import type { AnalyticsSnapshot } from "@/lib/analytics/types";
 import { runAnalytics } from "@/lib/analytics";
 import { loadAnalyticsInputs } from "@/lib/analytics/supabase-loader";
+import { buildMatchAdvancedAnalysis } from "@/lib/services/match-analysis";
 
 type ProfileRow = {
   id: string;
@@ -72,6 +73,7 @@ type RoundRow = {
   buy_type: RoundBuyType | null;
   kills: number;
   deaths: number;
+  assists: number;
   first_blood: boolean;
   first_death: boolean;
   clutch: boolean;
@@ -200,7 +202,34 @@ function buildHighlights(rounds: MatchRound[]): MatchHighlight[] {
   return highlights;
 }
 
-function mapMatch(row: MatchRow, rounds: MatchRound[] = []): ValorantMatch {
+function mapMatch(row: MatchRow, rounds: MatchRound[] = [], roundRows: RoundRow[] = []): ValorantMatch {
+  const analysis =
+    roundRows.length > 0
+      ? buildMatchAdvancedAnalysis({
+          match: {
+            scoreFor: row.score_for,
+            scoreAgainst: row.score_against,
+            kills: row.kills,
+            deaths: row.deaths,
+            assists: row.assists,
+            headshotPercent: Number(row.headshot_percent),
+            plants: row.plants,
+            defuses: row.defuses,
+          },
+          rounds: roundRows.map((r) => ({
+            won: r.won,
+            side: r.side,
+            buyType: r.buy_type ?? undefined,
+            kills: r.kills,
+            deaths: r.deaths,
+            assists: r.assists,
+            firstBlood: r.first_blood,
+            firstDeath: r.first_death,
+            clutch: r.clutch,
+          })),
+        })
+      : undefined;
+
   return {
     id: row.id,
     playedAtIso: row.started_at,
@@ -223,6 +252,7 @@ function mapMatch(row: MatchRow, rounds: MatchRound[] = []): ValorantMatch {
     rounds: rounds.length > 0 ? rounds : undefined,
     highlights: rounds.length > 0 ? buildHighlights(rounds) : undefined,
     benchmarks: buildBenchmarks(row),
+    analysis,
   };
 }
 
@@ -378,7 +408,7 @@ export class SupabaseValorantRepository implements ValorantDataRepository {
       .returns<RoundRow[]>();
     if (roundsError) throw roundsError;
 
-    return mapMatch(match, (rounds ?? []).map(mapRound));
+    return mapMatch(match, (rounds ?? []).map(mapRound), rounds ?? []);
   }
 
   async getAgentPerformance(userId: string): Promise<AgentPerformance[]> {

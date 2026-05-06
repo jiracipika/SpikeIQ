@@ -58,6 +58,115 @@ export interface MatchPerformance {
   defuses: number;
 }
 
+export interface MatchAdvancedAnalysis {
+  sample: {
+    rounds: number;
+  };
+  combatVolume: {
+    totalKills: number;
+    totalDeaths: number;
+    totalAssists: number;
+    killsPerRound: number;
+    deathsPerRound: number;
+    assistsPerRound: number;
+    impactPerRound: number;
+    killParticipationProxy: number;
+  };
+  openingDuels: {
+    attempted: number;
+    won: number;
+    lost: number;
+    noContactRounds: number;
+    winRate: number;
+    roundWinRateAfterFirstBlood: number;
+    roundWinRateAfterFirstDeath: number;
+    conversionDelta: number;
+  };
+  combatConsistency: {
+    multiKillRounds: number;
+    multiKillRate: number;
+    twoKPlusRounds: number;
+    threeKPlusRounds: number;
+    fourKPlusRounds: number;
+    aceRounds: number;
+    deathlessRounds: number;
+    deathlessRate: number;
+    zeroKillDeathRounds: number;
+    zeroKillDeathRate: number;
+    avgKillsPerRound: number;
+    killStdDev: number;
+    impactStdDev: number;
+    highImpactRounds: number;
+    lowImpactRounds: number;
+  };
+  conversion: {
+    roundWinRateWhen2PlusKills: number;
+    roundWinRateWhen0Kills: number;
+    roundWinRateWhenDeathless: number;
+    roundWinRateWhenDied: number;
+    closeRoundRecord: string;
+  };
+  sidePerformance: {
+    attackRounds: number;
+    attackWinRate: number;
+    attackKd: number;
+    attackOpeningWinRate: number;
+    attackOpeningDeathRate: number;
+    defenseRounds: number;
+    defenseWinRate: number;
+    defenseKd: number;
+    defenseOpeningWinRate: number;
+    defenseOpeningDeathRate: number;
+  };
+  buyProfile: {
+    pistolRounds: number;
+    pistolWinRate: number;
+    ecoRounds: number;
+    ecoWinRate: number;
+    forceRounds: number;
+    forceWinRate: number;
+    fullBuyRounds: number;
+    fullBuyWinRate: number;
+    bonusRounds: number;
+    bonusWinRate: number;
+  };
+  utilityImpact: {
+    assists: number;
+    assistsPerRound: number;
+    assistRounds: number;
+    assistRoundRate: number;
+    supportRate: number;
+    plants: number;
+    defuses: number;
+    objectiveActions: number;
+  };
+  clutchImpact: {
+    clutchRounds: number;
+    clutchRate: number;
+  };
+  tradeProxy: {
+    tradedDeathRounds: number;
+    tradedDeathRate: number;
+    untradedDeathRounds: number;
+    untradedDeathRate: number;
+  };
+  preAimProxy: {
+    headshotPercent: number;
+    firstDeathRate: number;
+    openingDeathRate: number;
+    cleanOpeningRate: number;
+  };
+  momentum: {
+    longestWinStreak: number;
+    longestLossStreak: number;
+    bounceBackWins: number;
+    bounceBackChances: number;
+    bounceBackRate: number;
+  };
+  tips: string[];
+  dataNotes: string[];
+}
+
 export interface MatchRound {
   roundNumber: number;
   winner: "player" | "enemy";
@@ -99,6 +208,7 @@ export interface ValorantMatch {
   rounds?: MatchRound[];
   highlights?: MatchHighlight[];
   benchmarks?: PerformanceBenchmark[];
+  analysis?: MatchAdvancedAnalysis;
   durationMinutes?: number;
 }
 

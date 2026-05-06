@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MatchHighlights } from "@/components/dashboard/match-highlights";
 import { PerformanceComparison } from "@/components/dashboard/performance-comparison";
 import { RoundBreakdown } from "@/components/dashboard/round-breakdown";
+import { MatchDeepAnalysis } from "@/components/dashboard/match-deep-analysis";
 import { formatMatchDate, formatPercent, cn } from "@/lib/utils";
 import { getValorantService } from "@/lib/services";
 
@@ -120,6 +121,21 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
         </Card>
       ) : null}
 
+      {match.analysis ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Deep performance analysis</CardTitle>
+            <CardDescription>
+              Per-match coaching diagnostics: openings, conversion, side splits, utility impact, and aim-pressure
+              proxies.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MatchDeepAnalysis analysis={match.analysis} />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Utility & objectives</CardTitle>
@@ -135,17 +151,18 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between rounded-lg border border-dashed border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-        <span>
-          Want per-round deaths, damage, and utility usage? That arrives once you connect your Riot
-          account.
-        </span>
-        <Link href="/connect-riot">
-          <Button variant="outline" size="sm">
-            Connect Riot
-          </Button>
-        </Link>
-      </div>
+      {!match.analysis ? (
+        <div className="flex items-center justify-between rounded-lg border border-dashed border-border bg-muted/30 p-4 text-xs text-muted-foreground">
+          <span>
+            Connect Riot and run a sync to unlock deep per-match diagnostics and coaching tips.
+          </span>
+          <Link href="/connect-riot">
+            <Button variant="outline" size="sm">
+              Connect Riot
+            </Button>
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }
